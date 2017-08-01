@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 from decimal import Decimal
-import logging
 
 from .client import OrderBookClient, ProductsClient
 from .order_book import OrderBook, OrderBookEntry, Product
@@ -10,17 +9,17 @@ from .order_book import OrderBook, OrderBookEntry, Product
 # Cache for the fetched products.
 PRODUCTS = []
 
-def create_order_book(currency_pair):
+def create_order_book(currency_pair, **kwargs):
     """
     Create a new OrderBook from the ground up
     for the given currency pair.
     We'll try to fetch the orderbook using the OrderBookClient.
     """
     client = OrderBookClient(currency_pair)
-    return create_order_book_from_client(client)
+    return create_order_book_from_client(client, **kwargs)
 
-def create_order_book_from_client(client):
-    order_book = OrderBook()
+def create_order_book_from_client(client, inversed=False):
+    order_book = OrderBook(inversed=inversed)
     for ask in client.get_asks():
         order_book.add_ask(parse_to_order_book_entry(ask))
     for bid in client.get_bids():

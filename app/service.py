@@ -11,21 +11,33 @@ app = Flask(__name__)
 
 @app.route('/quote', methods=['POST'])
 def quote():
+    """
+    Quoting enpoint.
+
+    This enpoint accepts only json request body with the following format:
+
+    {
+        "action": [buy|sell],
+        "base_currency: string,
+        "quote_currency": string,
+        "amount": numeric
+    }
+
+    """
     params = request.get_json()
-    response = validate_input_params(params)
-    if response:
-        return response
+    error_response = validate_input_params(params)
+    if error_response:
+        return error_response
 
     try:
         product, inversed = get_product_from_params(params)
-        order_book = create_order_book(str(product))
+        order_book = create_order_book(str(product), inversed=inversed)
     except Exception as e:
         return response_error(400, str(e))
 
-    quote = QuoteGenerator(order_book)
-    quote_method = quote.quote if not inversed else quote.quote_inverse
+    quoter = QuoteGenerator(order_book)
     try:
-        price, amount = quote_method(Decimal(params['amount']), params['action'])
+        price, amount = quoter.quote(Decimal(params['amount']), params['action'])
     except NotEnoughBookOrders:
         return response_error(500, 'not enough orders to complete quote')
 

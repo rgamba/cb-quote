@@ -7,8 +7,8 @@ class QuoteGeneratorTestCase(unittest.TestCase):
     def setUp(self):
         self.books = {}
 
-    def _create_order_book(self, currency_pair):
-        self.books[currency_pair] = OrderBook()
+    def _create_order_book(self, currency_pair, inversed=False):
+        self.books[currency_pair] = OrderBook(inversed=inversed)
         return self.books[currency_pair]
 
     def test_buy_btc_to_usd(self):
@@ -70,56 +70,56 @@ class QuoteGeneratorTestCase(unittest.TestCase):
             quoter.quote_buy(2)
 
     def test_buy_btc_to_usd_inverse(self):
-        book = self._create_order_book('BTC-USD')
+        book = self._create_order_book('BTC-USD', True)
         book.add_ask(OrderBookEntry(price=100, size=1, num_orders=1))
         book.add_ask(OrderBookEntry(price=200, size=1, num_orders=1))
         book.add_ask(OrderBookEntry(price=300, size=1, num_orders=1))
 
         quoter = QuoteGenerator(book)
-        amount, price = quoter.quote_inverse(100, QuoteGenerator.SIDE_BUY)
+        amount, price = quoter.quote_buy(100)
         self.assertEquals(amount, 1)
         self.assertEquals(price, 100)
-        amount, price = quoter.quote_inverse(150, QuoteGenerator.SIDE_BUY)
+        amount, price = quoter.quote_buy(150)
         self.assertEquals(amount, 1.25)
-        amount, price = quoter.quote_inverse(200, QuoteGenerator.SIDE_BUY)
+        amount, price = quoter.quote_buy(200)
         self.assertEquals(amount, 1.5)
-        amount, price = quoter.quote_inverse(350, QuoteGenerator.SIDE_BUY)
+        amount, price = quoter.quote_buy(350)
         self.assertEquals("{:.2f}".format(amount), '2.17')
 
     def test_buy_btc_to_usd_inverse_half_orders(self):
-        book = self._create_order_book('BTC-USD')
+        book = self._create_order_book('BTC-USD', True)
         book.add_ask(OrderBookEntry(price=100, size=.5, num_orders=1))
         book.add_ask(OrderBookEntry(price=200, size=.5, num_orders=1))
         book.add_ask(OrderBookEntry(price=300, size=.5, num_orders=1))
 
         quoter = QuoteGenerator(book)
-        amount, price = quoter.quote_inverse(100, QuoteGenerator.SIDE_BUY)
+        amount, price = quoter.quote_buy(100)
         self.assertEquals(amount, .75)
         self.assertEquals(price, 100)
-        amount, price = quoter.quote_inverse(300, QuoteGenerator.SIDE_BUY)
+        amount, price = quoter.quote_buy(300)
         self.assertEquals(amount, 1.5)
 
     def test_buy_btc_to_usd_inverse_half_orders_multi_number(self):
-        book = self._create_order_book('BTC-USD')
+        book = self._create_order_book('BTC-USD', True)
         book.add_ask(OrderBookEntry(price=100, size=.5, num_orders=2))
         book.add_ask(OrderBookEntry(price=200, size=.5, num_orders=2))
 
         quoter = QuoteGenerator(book)
-        amount, price = quoter.quote_inverse(100, QuoteGenerator.SIDE_BUY)
+        amount, price = quoter.quote_buy(100)
         self.assertEquals(amount, 1)
-        amount, price = quoter.quote_inverse(300, QuoteGenerator.SIDE_BUY)
+        amount, price = quoter.quote_buy(300)
         self.assertEquals(amount, 2)
 
     def test_buy_btc_to_usd_inverse_when_multiple_num_orders(self):
-        book = self._create_order_book('BTC-USD')
+        book = self._create_order_book('BTC-USD', True)
         book.add_ask(OrderBookEntry(price=100, size=1, num_orders=2))
         book.add_ask(OrderBookEntry(price=200, size=1, num_orders=1))
         book.add_ask(OrderBookEntry(price=300, size=1, num_orders=1))
 
         quoter = QuoteGenerator(book)
-        amount, price = quoter.quote_inverse(200, QuoteGenerator.SIDE_BUY)
+        amount, price = quoter.quote_buy(200)
         self.assertEquals(amount, 2)
-        amount, price = quoter.quote_inverse(300, QuoteGenerator.SIDE_BUY)
+        amount, price = quoter.quote_buy(300)
         self.assertEquals(amount, 2.5)
 
 

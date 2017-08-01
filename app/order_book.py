@@ -34,11 +34,12 @@ class OrderBook(object):
     implementing code.
 
     """
-    def __init__(self):
+    def __init__(self, inversed=False):
         # Offers to buy - Highest price first.
         self.bids = []
         # Offers to sell - Lowest price first.
         self.asks = []
+        self.inversed = inversed
 
     def add_bid(self, entry):
         self.bids.append(entry)
@@ -91,6 +92,11 @@ class QuoteGenerator(object):
         return self.quote(amount, self.SIDE_BUY)
 
     def quote(self, amount, side):
+        if self.order_book.inversed:
+            return self._quote_inverse(amount, side)
+        return self._quote(amount, side)
+
+    def _quote(self, amount, side):
         entries_iter = self._get_order_book_entries_iter(side)
         price = 0
         total_size = 0
@@ -109,7 +115,7 @@ class QuoteGenerator(object):
     def _get_entry_total_size(self, entry):
         return entry.size * entry.num_orders
 
-    def quote_inverse(self, price, side):
+    def _quote_inverse(self, price, side):
         entries_iter = self._get_order_book_entries_iter(side)
         amount = 0
         total_price = 0
