@@ -28,10 +28,10 @@ def quote():
         return error(400, str(e)), 400
 
     quote = QuoteGenerator(order_book)
-    price, amount = quote.quote(Decimal(params['amount']), params['action'])
+    price, amount = quote.quote_inverse(Decimal(params['amount']), params['action'])
 
     return jsonify({
-        'price': str(price),
+        'price': str(price / amount),
         'amount': str(amount),
         'currency': params['quote_currency']
     })

@@ -66,6 +66,19 @@ class QuoteGenerator(object):
                 break
         return (price, total_size,)
 
+    def quote_inverse(self, price, side):
+        positions = self._get_order_book_positions(side)
+        amount = 0
+        total_price = 0
+        for position in positions:
+            current_price = position.price
+            if (total_price + current_price) > price:
+                current_price = (price - total_price)
+            total_size += current_size
+            if total_price >= price:
+                break
+        return (total_size, price, )
+
     def _get_order_book_positions(self, side):
         if side == self.SIDE_BUY:
             return self.order_book.asks
