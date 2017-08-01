@@ -23,22 +23,19 @@ def quote():
     }
 
     """
+    # Handle input first.
     params = request.get_json()
     error_response = validate_input_params(params)
     if error_response:
         return error_response
 
     try:
-        product, inversed = get_product_from_params(params)
-        order_book = create_order_book(str(product), inversed=inversed)
+        order_book = get_order_book_from_params(params)
+        price, amount = execute_quote(params['amount'], params['action'], order_book)
+    except NotEnoughBookOrders:
+        return response_error(400, 'the given amount is too high, not enough orders in the order book')
     except Exception as e:
         return response_error(400, str(e))
-
-    quoter = QuoteGenerator(order_book)
-    try:
-        price, amount = quoter.quote(Decimal(params['amount']), params['action'])
-    except NotEnoughBookOrders:
-        return response_error(500, 'not enough orders to complete quote')
 
     return jsonify({
         'price': "{:.8f}".format(price / amount),
@@ -47,16 +44,32 @@ def quote():
     })
 
 def validate_input_params(request_body):
+    def _add_error(field, message):
+        errors.append({'field': field, 'error': message})
+
     required_params = ('action', 'base_currency', 'quote_currency', 'amount')
     errors = []
     for required_param in required_params:
         if not request_body.get(required_param):
-            errors.append({'field': required_param, 'error': 'required'})
+            _add_error(required_param, 'required')
     if request_body.get('action') not in ['buy', 'sell']:
-        errors.append({'field': 'action', 'error': 'invalid'})
+        _add_error('action', 'invalid')
+    try:
+        if float(request_body.get('amount')) <= 0:
+            _add_error('amount', 'amount must be greater than 0')
+    except Exception:
+        _add_error('amount', 'must be a numeric value')
     if errors:
         return response_error(400, 'invalid parameters', {'invalid_parameters': errors})
     return None
+
+def get_order_book_from_params(params):
+    product, inversed = get_product_from_params(params)
+    return create_order_book(str(product), inversed=inversed)
+
+def execute_quote(amount, action, order_book):
+    quoter = QuoteGenerator(order_book)
+    return quoter.quote(Decimal(amount), action)
 
 def get_product_from_params(params):
     product, inversed = find_product(params['base_currency'].upper(), params['quote_currency'].upper())

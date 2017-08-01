@@ -16,9 +16,17 @@ class Product(object):
         self.quote_currency = quote_currency
 
     def matches_currencies(self, cur1, cur2):
+        """
+        Simple method to check if the currencies given match with the currencies
+        onthe current object.
+        """
         return self.base_currency == cur1 and self.quote_currency == cur2
 
     def matches_currencies_inversed(self, cur1, cur2):
+        """
+        When there is no direct match, there can be an inversed match, this method
+        if used to check that.
+        """
         return self.base_currency == cur2 and self.quote_currency == cur1
 
     def __str__(self):
@@ -32,6 +40,11 @@ class OrderBook(object):
     OrderBook is agnostic to the actual currency pair
     that is being used, that logic must be placed in the
     implementing code.
+
+    This implementation preserves the right order expected
+    for the asks and bids, but you must use the iterator
+    methods *_iter to guarantee the ask/bids are indeed
+    in the correct order.
 
     """
     def __init__(self, inversed=False):
@@ -93,6 +106,12 @@ class QuoteGenerator(object):
         return self.quote(amount, self.SIDE_BUY)
 
     def quote(self, amount, side):
+        """
+        Aggregate orderbook entries until we reach
+        the amount needed.
+        In case the underlying orderbook has the inversed
+        flag on, then we'll perform an inverse quote.
+        """
         if self.order_book.inversed:
             return self._quote_inverse(amount, side)
         return self._quote(amount, side)
