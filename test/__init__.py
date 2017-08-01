@@ -3,6 +3,7 @@ import unittest
 from app.order_book import OrderBook, OrderBookEntry, QuoteGenerator, Product
 from app import lib
 
+
 class QuoteGeneratorTestCase(unittest.TestCase):
     def setUp(self):
         self.books = {}

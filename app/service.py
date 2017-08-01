@@ -15,7 +15,6 @@ def quote():
     Quoting enpoint.
 
     This enpoint accepts only json request body with the following format:
-
     {
         "action": [buy|sell],
         "base_currency: string,
@@ -44,24 +43,23 @@ def quote():
     return jsonify({
         'price': "{:.8f}".format(price / amount),
         'total': "{:.8f}".format(price),
-        'currency': params['quote_currency']
+        'currency': params['quote_currency'].upper()
     })
 
 def validate_input_params(request_body):
     required_params = ('action', 'base_currency', 'quote_currency', 'amount')
     errors = []
     for required_param in required_params:
-        if required_param not in request_body:
+        if not request_body.get(required_param):
             errors.append({'field': required_param, 'error': 'required'})
-    if 'action' not in errors and 'action' in request_body:
-        if request_body['action'] not in ['buy', 'sell']:
-            errors.append({'field': 'action', 'error': 'invalid'})
+    if request_body.get('action') not in ['buy', 'sell']:
+        errors.append({'field': 'action', 'error': 'invalid'})
     if errors:
         return response_error(400, 'invalid parameters', {'invalid_parameters': errors})
     return None
 
-def get_product_from_params(request_body):
-    product, inversed = find_product(request_body['base_currency'], request_body['quote_currency'])
+def get_product_from_params(params):
+    product, inversed = find_product(params['base_currency'].upper(), params['quote_currency'].upper())
     if not product:
         raise Exception("invalid currency pair provided")
     return (product, inversed,)
