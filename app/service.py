@@ -3,36 +3,35 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from flask import Flask, jsonify, request
 from decimal import Decimal
 
-from .lib import create_order_book
-from .order_book import QuoteGenerator
+from .lib import create_order_book, find_product
+from .order_book import QuoteGenerator, NotEnoughBookOrders
 
 app = Flask(__name__)
 
 
-@app.route('/')
-def index():
-    return jsonify({
-        'service': 'Coinbase Quote Service'
-    })
-
 @app.route('/quote', methods=['POST'])
 def quote():
     params = request.get_json()
-    errors = validate_input_params(params)
-    if errors:
-        return error(400, 'invalid parameters', {'invalid_parameters': errors}), 400
+    response = validate_input_params(params)
+    if response:
+        return response
 
     try:
-        order_book = create_order_book(create_currency_pair(params))
+        product, inversed = get_product_from_params(params)
+        order_book = create_order_book(str(product))
     except Exception as e:
-        return error(400, str(e)), 400
+        return response_error(400, str(e))
 
     quote = QuoteGenerator(order_book)
-    price, amount = quote.quote_inverse(Decimal(params['amount']), params['action'])
+    quote_method = quote.quote if not inversed else quote.quote_inverse
+    try:
+        price, amount = quote_method(Decimal(params['amount']), params['action'])
+    except NotEnoughBookOrders:
+        return response_error(500, 'not enough orders to complete quote')
 
     return jsonify({
-        'price': str(price / amount),
-        'amount': str(amount),
+        'price': "{:.8f}".format(price / amount),
+        'total': "{:.8f}".format(price),
         'currency': params['quote_currency']
     })
 
@@ -42,13 +41,18 @@ def validate_input_params(request_body):
     for required_param in required_params:
         if required_param not in request_body:
             errors.append({'field': required_param, 'error': 'required'})
-    if 'action' not in errors:
+    if 'action' not in errors and 'action' in request_body:
         if request_body['action'] not in ['buy', 'sell']:
             errors.append({'field': 'action', 'error': 'invalid'})
-    return errors
+    if errors:
+        return response_error(400, 'invalid parameters', {'invalid_parameters': errors})
+    return None
 
-def create_currency_pair(request_body):
-    return "{}-{}".format(request_body['base_currency'], request_body['quote_currency'])
+def get_product_from_params(request_body):
+    product, inversed = find_product(request_body['base_currency'], request_body['quote_currency'])
+    if not product:
+        raise Exception("invalid currency pair provided")
+    return (product, inversed,)
 
 @app.errorhandler(404)
 def page_not_found(error):

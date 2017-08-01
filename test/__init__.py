@@ -1,7 +1,7 @@
 import unittest
 
-from app.order_book import OrderBook, OrderBookEntry, QuoteGenerator
-
+from app.order_book import OrderBook, OrderBookEntry, QuoteGenerator, Product
+from app import lib
 
 class QuoteGeneratorTestCase(unittest.TestCase):
     def setUp(self):
@@ -86,6 +86,30 @@ class QuoteGeneratorTestCase(unittest.TestCase):
         amount, price = quoter.quote_inverse(350, QuoteGenerator.SIDE_BUY)
         self.assertEquals("{:.2f}".format(amount), '2.17')
 
+    def test_buy_btc_to_usd_inverse_half_orders(self):
+        book = self._create_order_book('BTC-USD')
+        book.add_ask(OrderBookEntry(price=100, size=.5, num_orders=1))
+        book.add_ask(OrderBookEntry(price=200, size=.5, num_orders=1))
+        book.add_ask(OrderBookEntry(price=300, size=.5, num_orders=1))
+
+        quoter = QuoteGenerator(book)
+        amount, price = quoter.quote_inverse(100, QuoteGenerator.SIDE_BUY)
+        self.assertEquals(amount, .75)
+        self.assertEquals(price, 100)
+        amount, price = quoter.quote_inverse(300, QuoteGenerator.SIDE_BUY)
+        self.assertEquals(amount, 1.5)
+
+    def test_buy_btc_to_usd_inverse_half_orders_multi_number(self):
+        book = self._create_order_book('BTC-USD')
+        book.add_ask(OrderBookEntry(price=100, size=.5, num_orders=2))
+        book.add_ask(OrderBookEntry(price=200, size=.5, num_orders=2))
+
+        quoter = QuoteGenerator(book)
+        amount, price = quoter.quote_inverse(100, QuoteGenerator.SIDE_BUY)
+        self.assertEquals(amount, 1)
+        amount, price = quoter.quote_inverse(300, QuoteGenerator.SIDE_BUY)
+        self.assertEquals(amount, 2)
+
     def test_buy_btc_to_usd_inverse_when_multiple_num_orders(self):
         book = self._create_order_book('BTC-USD')
         book.add_ask(OrderBookEntry(price=100, size=1, num_orders=2))
@@ -99,8 +123,51 @@ class QuoteGeneratorTestCase(unittest.TestCase):
         self.assertEquals(amount, 2.5)
 
 
+class ProductsTestCase(unittest.TestCase):
+    def test_matches_currencies_ok(self):
+        p1 = Product(base_currency='USD', quote_currency='BTC')
+        self.assertTrue(p1.matches_currencies('USD', 'BTC'))
+        self.assertFalse(p1.matches_currencies('BTC', 'USD'))
+
+    def test_matches_currencies_inversed(self):
+        p1 = Product(base_currency='USD', quote_currency='BTC')
+        self.assertFalse(p1.matches_currencies('BTC', 'USD'))
+        self.assertTrue(p1.matches_currencies_inversed('BTC', 'USD'))
+
+
+class LibFunctionsTestCase(unittest.TestCase):
+    def setUp(self):
+        lib.PRODUCTS = [
+            Product(base_currency='BTC', quote_currency='USD'),
+            Product(base_currency='LTC', quote_currency='USD'),
+        ]
+
+    def tearDown(self):
+        lib.PRODUCTS = []
+
+    def test_find_product_regular(self):
+        product, inversed = lib.find_product('BTC', 'USD')
+        self.assertIsNotNone(product)
+        self.assertEquals(str(product), 'BTC-USD')
+        self.assertEquals(inversed, False)
+
+    def test_find_product_inversed(self):
+        product, inversed = lib.find_product('USD', 'BTC')
+        self.assertIsNotNone(product)
+        self.assertEquals(str(product), 'BTC-USD')
+        self.assertEquals(inversed, True)
+
+    def test_find_product_when_doesnt_exist(self):
+        product, inversed = lib.find_product('invalid', 'USD')
+        self.assertIsNone(product)
+
+
 suite = unittest.TestSuite()
-test_cases = [QuoteGeneratorTestCase]
+test_cases = [
+    QuoteGeneratorTestCase,
+    ProductsTestCase,
+    LibFunctionsTestCase,
+]
 for test in test_cases:
     suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(test))
 unittest.TextTestRunner().run(suite)

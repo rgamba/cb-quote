@@ -3,7 +3,27 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import requests
 
 
-class OrderBookClient(object):
+class ClientBase(object):
+    """
+    A base client for all the other clients.
+
+    """
+    def validate_response(self, response):
+        if response.status_code == 404:
+            raise ValueError("Invalid currency pair provided")
+        if response.status_code != 200:
+            raise Exception("Service unavailable")
+
+    def make_request(self):
+        response = requests.get(self.get_request_url())
+        self.validate_response(response)
+        return response.json()
+
+    def refresh(self):
+        self.make_request()
+
+
+class OrderBookClient(ClientBase):
     """
     Fetches all the bids and asks right from coinbase.
 
@@ -14,22 +34,8 @@ class OrderBookClient(object):
         self.currency_pair = currency_pair
         self.response = self.make_request()
 
-    def make_request(self):
-        response = requests.get(self._get_request_url())
-        self.validate_response(response)
-        return response.json()
-
-    def validate_response(self, response):
-        if response.status_code == 404:
-            raise ValueError("Invalid currency pair provided")
-        if response.status_code != 200:
-            raise Exception("Service unavailable")
-
-    def _get_request_url(self):
+    def get_request_url(self):
         return self.ORDER_BOOK_URL.format(self.currency_pair)
-
-    def refresh(self):
-        self.make_request()
 
     def get_asks(self):
         for ask in self.response['asks']:
@@ -39,3 +45,16 @@ class OrderBookClient(object):
         for bid in self.response['bids']:
             yield bid
 
+
+class ProductsClient(ClientBase):
+    PRODUCTS_URL = "https://api.gdax.com/products/"
+
+    def __init__(self):
+        self.response = self.make_request()
+
+    def get_request_url(self):
+        return self.PRODUCTS_URL
+
+    def get_products(self):
+        for product in self.response:
+            yield (product['base_currency'], product['quote_currency'],)

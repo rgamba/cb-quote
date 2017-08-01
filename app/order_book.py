@@ -6,6 +6,25 @@ from collections import namedtuple
 OrderBookEntry = namedtuple('OrderBookEntry', ['price', 'size', 'num_orders'])
 
 
+class Product(object):
+    """
+    A product represents a currency pair in the coinbase
+    order book API.
+    """
+    def __init__(self, base_currency, quote_currency):
+        self.base_currency = base_currency
+        self.quote_currency = quote_currency
+
+    def matches_currencies(self, cur1, cur2):
+        return self.base_currency == cur1 and self.quote_currency == cur2
+
+    def matches_currencies_inversed(self, cur1, cur2):
+        return self.base_currency == cur2 and self.quote_currency == cur1
+
+    def __str__(self):
+        return "{}-{}".format(self.base_currency, self.quote_currency)
+
+
 class OrderBook(object):
     """
     OrderBook represents a collection of bids and
@@ -48,6 +67,9 @@ class OrderBook(object):
         self.asks = []
 
 
+class NotEnoughBookOrders(Exception):
+    pass
+
 class QuoteGenerator(object):
     """
     A quote generator will be linked to a specific
@@ -81,7 +103,7 @@ class QuoteGenerator(object):
             if total_size >= amount:
                 break
         if total_size < amount:
-            raise Exception("Unable to complete quote")
+            raise NotEnoughBookOrders("Unable to complete quote")
         return (price, total_size,)
 
     def _get_entry_total_size(self, entry):
@@ -100,11 +122,11 @@ class QuoteGenerator(object):
             else:
                 price_remaining = 0
             amount += current_amount
-            total_price += (price_remaining | current_price)
+            total_price += (price_remaining if price_remaining else current_price)
             if total_price >= price:
                 break
         if total_price < price:
-            raise Exception("Unable to complete quote")
+            raise NotEnoughBookOrders("Unable to complete quote")
         return (amount, price,)
 
     def _get_entry_total_price(self, entry):
