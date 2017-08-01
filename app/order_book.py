@@ -71,6 +71,7 @@ class OrderBook(object):
 class NotEnoughBookOrders(Exception):
     pass
 
+
 class QuoteGenerator(object):
     """
     A quote generator will be linked to a specific

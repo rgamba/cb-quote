@@ -24,6 +24,17 @@ bin/run
 
 That's it! Your service should be listening to new connections on http://localhost:5000
 
+### Step 3: Sample request
+
+```bash
+curl -H "Content-Type: application/json" -X POST -d '{
+    "action": "buy",
+    "base_currency": "BTC",
+    "quote_currency": "USD",
+    "amount": 1
+}' localhost:5000/quote
+```
+
 ## Testing
 
 The service includes a suite of tests that can be run as follows from the project root.
