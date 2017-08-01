@@ -16,9 +16,9 @@ class OrderBook(object):
 
     """
     def __init__(self):
-        # Offers to buy
+        # Offers to buy - Highest price first.
         self.bids = []
-        # Offers to sell
+        # Offers to sell - Lowest price first.
         self.asks = []
 
     def add_bid(self, entry):
@@ -26,6 +26,22 @@ class OrderBook(object):
 
     def add_ask(self, entry):
         self.asks.append(entry)
+
+    def get_bids_iter(self):
+        self._sort_bids()
+        for bid in self.bids:
+            yield bid
+
+    def get_asks_iter(self):
+        self._sort_asks()
+        for ask in self.asks:
+            yield ask
+
+    def _sort_bids(self):
+        self.bids = sorted(self.bids, key=lambda x: x.price, reverse=True)
+
+    def _sort_asks(self):
+        self.asks = sorted(self.asks, key=lambda x: x.price)
 
     def reset(self):
         self.bids = []
@@ -53,33 +69,48 @@ class QuoteGenerator(object):
         return self.quote(amount, self.SIDE_BUY)
 
     def quote(self, amount, side):
-        positions = self._get_order_book_positions(side)
+        entries_iter = self._get_order_book_entries_iter(side)
         price = 0
         total_size = 0
-        for position in positions:
-            current_size = position.size
+        for entry in entries_iter():
+            current_size = self._get_entry_total_size(entry)
             if (total_size + current_size) > amount:
                 current_size = (amount - total_size)
             total_size += current_size
-            price += (current_size * position.price)
+            price += (current_size * entry.price)
             if total_size >= amount:
                 break
+        if total_size < amount:
+            raise Exception("Unable to complete quote")
         return (price, total_size,)
 
+    def _get_entry_total_size(self, entry):
+        return entry.size * entry.num_orders
+
     def quote_inverse(self, price, side):
-        positions = self._get_order_book_positions(side)
+        entries_iter = self._get_order_book_entries_iter(side)
         amount = 0
         total_price = 0
-        for position in positions:
-            current_price = position.price
+        for entry in entries_iter():
+            current_price = self._get_entry_total_price(entry)
+            current_amount = self._get_entry_total_size(entry)
             if (total_price + current_price) > price:
-                current_price = (price - total_price)
-            total_size += current_size
+                price_remaining = price - total_price
+                current_amount = (price_remaining * current_amount) / current_price
+            else:
+                price_remaining = 0
+            amount += current_amount
+            total_price += (price_remaining | current_price)
             if total_price >= price:
                 break
-        return (total_size, price, )
+        if total_price < price:
+            raise Exception("Unable to complete quote")
+        return (amount, price,)
 
-    def _get_order_book_positions(self, side):
+    def _get_entry_total_price(self, entry):
+        return entry.price * entry.size * entry.num_orders
+
+    def _get_order_book_entries_iter(self, side):
         if side == self.SIDE_BUY:
-            return self.order_book.asks
-        return self.order_book.bids
+            return self.order_book.get_asks_iter
+        return self.order_book.get_bids_iter

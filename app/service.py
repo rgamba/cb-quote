@@ -52,15 +52,15 @@ def create_currency_pair(request_body):
 
 @app.errorhandler(404)
 def page_not_found(error):
-    return error(404, 'method not found'), 404
+    return response_error(404, 'method not found')
 
 @app.errorhandler(405)
 def method_not_allowed(error):
-    return error(405, 'method not allowed'), 405
+    return error(405, 'method not allowed')
 
-def error(code, message, extra=None):
+def response_error(code, message, extra=None):
     return jsonify({
         'code': code,
         'message': message,
         'extra': extra
-    })
+    }), code
